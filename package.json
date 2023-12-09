@@ -169,7 +169,7 @@
                 },
                 "cph.language.rust.Command": {
                     "type": "string",
-                    "default": "rustc",
+                    "default": "cargo",
                     "description": "Command used to compile rust files."
                 },
                 "cph.language.go.Args": {

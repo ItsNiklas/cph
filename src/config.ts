@@ -21,7 +21,7 @@ export default {
         c: 'gcc',
         cpp: 'g++',
         python: 'python',
-        rust: 'rustc',
+        rust: 'cargo',
         java: 'javac',
         js: 'node',
         go: 'go',
