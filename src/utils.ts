@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'fs';
 import { platform } from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
+import JSZip from 'jszip';
 
 import config from './config';
 import { getProbSaveLocation } from './parser';
@@ -24,8 +25,9 @@ import {
     getGoCommand,
     getHaskellCommand,
 } from './preferences';
-import { Language, Problem } from './types';
+import { Language, Problem, TestCase } from './types';
 import telmetry from './telmetry';
+import { getJudgeViewProvider } from './extension';
 
 const oc = vscode.window.createOutputChannel('cph');
 
@@ -187,4 +189,78 @@ export const getProblemForDocument = (
     }
     const problem: Problem = JSON.parse(readFileSync(probPath).toString());
     return problem;
+};
+
+export const readFromDOMjudgeZip = async () => {
+    const currentDocument = vscode.window.activeTextEditor?.document;
+
+    const problem = getProblemForDocument(currentDocument);
+
+    if (!problem) {
+        // Show a warning message if no problem is associated with the current document
+        vscode.window.showWarningMessage(
+            'No problem found for the current document.',
+        );
+        return; // Optionally return from the function if you don't want to proceed further
+    }
+
+    // Open a file-picker to let the user select the ZIP file
+    const options: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        canSelectFolders: false,
+        canSelectFiles: true,
+        title: 'Select a DOMjudge samples ZIP file',
+        openLabel: 'Open',
+        filters: {
+            'Zip files': ['zip'],
+        },
+    };
+
+    const fileUri = await vscode.window.showOpenDialog(options);
+    if (fileUri && fileUri[0]) {
+        const zipFileUri = fileUri[0];
+        const zipData = await vscode.workspace.fs.readFile(zipFileUri);
+        const zip = new JSZip();
+        await zip.loadAsync(zipData);
+
+        // Create an object to hold matching input and output files
+        const testCases: Record<string, TestCase> = {};
+
+        // Iterate through each file in the ZIP
+        zip.forEach((relativePath, file) => {
+            if (!file.dir) {
+                const fileExtension = relativePath.split('.').pop();
+                const fileNameRaw = relativePath.replace(/\.\w+$/, '');
+
+                file.async('string').then((content) => {
+                    if (!testCases[fileNameRaw]) {
+                        testCases[fileNameRaw] = {
+                            input: '',
+                            output: '',
+                            id: Date.now(),
+                        };
+                    }
+
+                    if (fileExtension === 'in') {
+                        testCases[fileNameRaw].input = content;
+                    } else if (fileExtension === 'out') {
+                        testCases[fileNameRaw].output = content;
+                    }
+
+                    // Check if both input and output are set, then send to webview
+                    if (
+                        testCases[fileNameRaw].input &&
+                        testCases[fileNameRaw].output
+                    ) {
+                        getJudgeViewProvider().extensionToJudgeViewMessage({
+                            command: 'new-case',
+                            testcase: testCases[fileNameRaw],
+                        });
+                    }
+                });
+            }
+        });
+    } else {
+        vscode.window.showInformationMessage('No file selected.');
+    }
 };

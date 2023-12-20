@@ -192,6 +192,11 @@ export type NewProblemCommand = {
     problem: Problem | undefined;
 };
 
+export type NewCaseCommand = {
+    command: 'new-case';
+    testcase: TestCase;
+};
+
 export type VSToWebViewMessage =
     | ResultCommand
     | RunningCommand
@@ -201,7 +206,8 @@ export type VSToWebViewMessage =
     | WaitingForSubmitCommand
     | SubmitFinishedCommand
     | NotRunningCommand
-    | NewProblemCommand;
+    | NewProblemCommand
+    | NewCaseCommand;
 
 export type CphEmptyResponse = {
     empty: true;

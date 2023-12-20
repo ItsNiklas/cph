@@ -578,6 +578,18 @@ function App() {
                     handleRunSingleResult(data);
                     break;
                 }
+                case 'new-case': {
+                    const id = Date.now();
+                    setCases([
+                        ...cases,
+                        {
+                            id,
+                            result: null,
+                            testcase: data.testcase,
+                        },
+                    ]);
+                    break;
+                }
             }
         };
         window.addEventListener('message', fn);
